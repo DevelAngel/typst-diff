@@ -19,6 +19,7 @@ bench = false
 doc = false
 
 [dependencies]
+typst-diff = { path = "../typst-diff" }
 typst = { workspace = true }
 typst-pdf = { workspace = true }
 typst-render = { workspace = true }

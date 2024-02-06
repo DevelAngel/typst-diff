@@ -98,7 +98,7 @@ pub fn compile_once(
     }
 
     let mut tracer = Tracer::new();
-    let result = typst::compile(world, &mut tracer);
+    let result = typst_diff::compile_diff(world, world_two, &mut tracer);
     let warnings = tracer.warnings();
 
     match result {
