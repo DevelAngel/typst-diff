@@ -18,9 +18,10 @@ use crate::world::SystemWorld;
 pub fn watch(mut command: CompileCommand) -> StrResult<()> {
     // Create the world that serves sources, files, and fonts.
     let mut world = SystemWorld::new(&command.common)?;
+    let mut world_two = SystemWorld::new(&command.common)?;
 
     // Perform initial compilation.
-    compile_once(&mut world, &mut command, true)?;
+    compile_once(&mut world, &mut world_two, &mut command, true)?;
 
     // Setup file watching.
     let (tx, rx) = std::sync::mpsc::channel();
@@ -65,9 +66,10 @@ pub fn watch(mut command: CompileCommand) -> StrResult<()> {
         if recompile {
             // Reset all dependencies.
             world.reset();
+            world_two.reset();
 
             // Recompile.
-            compile_once(&mut world, &mut command, true)?;
+            compile_once(&mut world, &mut world_two, &mut command, true)?;
             comemo::evict(10);
 
             // Adjust the file watching.

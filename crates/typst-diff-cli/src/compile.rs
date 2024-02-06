@@ -58,7 +58,10 @@ impl CompileCommand {
 /// Execute a compilation command.
 pub fn compile(mut command: CompileCommand) -> StrResult<()> {
     let mut world = SystemWorld::new(&command.common)?;
-    compile_once(&mut world, &mut command, false)?;
+    let mut common_two = command.common.clone();
+    common_two.input = command.input_two.clone();
+    let mut world_two = SystemWorld::new(&common_two)?;
+    compile_once(&mut world, &mut world_two, &mut command, false)?;
     Ok(())
 }
 
@@ -68,6 +71,7 @@ pub fn compile(mut command: CompileCommand) -> StrResult<()> {
 #[tracing::instrument(skip_all)]
 pub fn compile_once(
     world: &mut SystemWorld,
+    world_two: &mut SystemWorld,
     command: &mut CompileCommand,
     watching: bool,
 ) -> StrResult<()> {

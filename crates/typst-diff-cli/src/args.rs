@@ -56,6 +56,9 @@ pub struct CompileCommand {
     #[clap(flatten)]
     pub common: SharedArgs,
 
+    /// Path to second input Typst file
+    pub input_two: PathBuf,
+
     /// Path to output file (PDF, PNG, or SVG)
     pub output: Option<PathBuf>,
 
