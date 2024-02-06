@@ -57,6 +57,13 @@ ureq = { workspace = true }
 xz2 = { workspace = true, optional = true }
 zip = { workspace = true, optional = true }
 
+[dev-dependencies]
+assert_cmd = { version = "2.0.13", features = ["color-auto"] }
+assert_fs = { version = "1.1.1", features = ["color-auto"] }
+indoc = "2.0.4"
+predicates = "3.1.0"
+stdext = "0.3.1"
+
 [build-dependencies]
 clap = { workspace = true, features = ["string"] }
 clap_complete = { workspace = true }
