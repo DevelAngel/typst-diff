@@ -1,15 +1,14 @@
 [workspace]
 members = ["crates/*"]
-default-members = ["crates/typst-cli"]
+default-members = ["crates/typst-diff-cli"]
 resolver = "2"
 
 [workspace.package]
 version = "0.10.0"
 rust-version = "1.70" # also change in ci.yml
-authors = ["The Typst Project Developers"]
+authors = ["The Typst Project Developers", "Angelos Drossos"]
 edition = "2021"
-homepage = "https://typst.app"
-repository = "https://github.com/typst/typst"
+repository = "https://github.com/DevelAngel/typst-diff"
 readme = "README.md"
 license = "Apache-2.0"
 categories = ["compilers"]
@@ -125,7 +124,7 @@ opt-level = 2
 lto = "thin"
 codegen-units = 1
 
-[profile.release.package."typst-cli"]
+[profile.release.package."typst-diff-cli"]
 strip = true
 
 [workspace.lints.clippy]

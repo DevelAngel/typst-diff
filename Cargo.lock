@@ -2476,7 +2476,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "typst-cli"
+name = "typst-diff-cli"
 version = "0.10.0"
 dependencies = [
  "chrono",
