@@ -27,7 +27,7 @@ bytemuck = "1"
 chinese-number = { version = "0.7.2", default-features = false, features = ["number-to-chinese"] }
 chrono = { version = "0.4.24", default-features = false, features = ["clock", "std"] }
 ciborium = "0.2.1"
-clap = { version = "4.4", features = ["derive", "env"] }
+clap = { version = "4.4", features = ["derive", "env", "cargo"] }
 clap_complete = "4.2.1"
 clap_mangen = "0.2.10"
 codespan-reporting = "0.11"

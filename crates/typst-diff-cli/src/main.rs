@@ -83,7 +83,7 @@ fn color_stream() -> termcolor::StandardStream {
 
 /// Used by `args.rs`.
 fn typst_version() -> &'static str {
-    env!("TYPST_VERSION")
+    option_env!("TYPST_VERSION").unwrap_or(clap::crate_version!())
 }
 
 #[cfg(not(feature = "self-update"))]
