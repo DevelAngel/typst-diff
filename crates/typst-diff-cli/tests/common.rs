@@ -64,12 +64,26 @@ pub(crate) mod intern {
 
         let mut cmd = Command::cargo_bin("typst-diff").unwrap();
         let assert = cmd
+            .arg("-vvvv")
             .arg("compile")
             .arg(file_a.path())
             .arg(file_b.path())
             .arg(file_diff.path())
-            .assert();
-        assert.success();
+            .assert()
+            .success();
+        let output = assert.get_output();
+        if !output.stdout.is_empty() {
+            println!(
+                "STDOUT:\n{}\n",
+                std::str::from_utf8(&output.stdout).unwrap()
+            );
+        }
+        if !output.stderr.is_empty() {
+            println!(
+                "STDERR:\n{}\n",
+                std::str::from_utf8(&output.stderr).unwrap()
+            );
+        }
 
         println!(
             "tmp dir of test {function_name}:\n{}",

@@ -151,7 +151,7 @@ fn diff_content(content_one: Content, content_two: Content) -> Content {
     let content = Vec::with_capacity(changes.len());
     let content = changes.iter().fold(content, create_diff_content);
     let content = Content::sequence(content);
-    tracing::trace!("content:\n{content:#?}");
+    tracing::trace!("merged content:\n{content:#?}");
     content
 }
 
