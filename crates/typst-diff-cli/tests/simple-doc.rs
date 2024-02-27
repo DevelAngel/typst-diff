@@ -23,7 +23,18 @@ fn one_line() {
 }
 
 #[test]
-fn one_vs_two_lines() {
+fn one_vs_two_lines_equal() {
+    test_diff!(
+        formatdoc!(r#"Hello World! I am here."#),
+        formatdoc!(
+            r#"Hello World!
+               I am here."#
+        )
+    );
+}
+
+#[test]
+fn one_vs_two_lines_unequal() {
     test_diff!(
         formatdoc!(r#"Hello World! I am here."#),
         formatdoc!(
