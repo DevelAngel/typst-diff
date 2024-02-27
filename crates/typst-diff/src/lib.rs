@@ -159,13 +159,14 @@ fn create_diff_content(
     mut content: Vec<Content>,
     (tag, next): &(ChangeTag, &[DiffableContent]),
 ) -> Vec<Content> {
+    let body: Content = Content::sequence(next.into_iter().map(|x| match x {
+        DiffableContent::Content(x) => (*x).clone(),
+    }));
     match tag {
         ChangeTag::Equal => {
-            let body = Content::sequence(next.iter().map(|x| x.content().clone()));
             content.push(body);
         }
         ChangeTag::Delete => {
-            let body = Content::sequence(next.iter().map(|x| x.content().clone()));
             let strike_elem = StrikeElem::new(body).with_stroke(Smart::Custom(Stroke {
                 paint: Smart::Auto,
                 thickness: Smart::Custom(Abs::pt(1.5).into()),
@@ -181,7 +182,6 @@ fn create_diff_content(
             content.push(highlight_elem);
         }
         ChangeTag::Insert => {
-            let body = Content::sequence(next.iter().map(|x| x.content().clone()));
             let highlight_elem = HighlightElem::new(body).with_fill(Paint::Solid(Color::GREEN));
             let highlight_elem = Content::new(highlight_elem);
             content.push(highlight_elem);

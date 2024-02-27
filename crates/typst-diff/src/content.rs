@@ -3,63 +3,31 @@ use std::hash::{Hash, Hasher};
 
 use comemo::Prehashed;
 use typst::foundations::Content;
-use typst::text::*;
 
 #[derive(Clone, Debug)]
-pub(crate) struct DiffableContent<'a>(&'a Content);
-
-impl<'a> DiffableContent<'a> {
-    pub fn content(&self) -> &Content {
-        self.0
-    }
-
-    fn dyn_eq(&self, other: &Content) -> bool {
-        let content = self.0;
-
-        /* Undicided elements:
-         *  - SmartQuoteElem
-         */
-        if let Some(elem) = content.to::<UnderlineElem>() {
-            DiffableContent::from(elem.body()).dyn_eq(other)
-        } else if let Some(elem) = content.to::<OverlineElem>() {
-            DiffableContent::from(elem.body()).dyn_eq(other)
-        } else if let Some(elem) = content.to::<HighlightElem>() {
-            DiffableContent::from(elem.body()).dyn_eq(other)
-        } else if let Some(elem) = content.to::<SuperElem>() {
-            DiffableContent::from(elem.body()).dyn_eq(other)
-        } else if let Some(elem) = content.to::<SubElem>() {
-            DiffableContent::from(elem.body()).dyn_eq(other)
-        } else if let Some(elem) = content.to::<StrikeElem>() {
-            DiffableContent::from(elem.body()).dyn_eq(other)
-        } else {
-            /* Elements to compare:
-             *  - TextElem
-             *  - LinebreakElem
-             *  - SpaceElem
-             *  - RawElem
-             */
-            content.eq(other)
-        }
-    }
+pub(crate) enum DiffableContent<'a> {
+    Content(&'a Content),
 }
 
 impl<'a> From<&'a Content> for DiffableContent<'a> {
-    fn from(src: &'a Content) -> Self {
-        Self(src)
+    fn from(content: &'a Content) -> Self {
+        Self::Content(content)
     }
 }
 
 impl<'a> From<&'a Prehashed<Content>> for DiffableContent<'a> {
     fn from(src: &'a Prehashed<Content>) -> Self {
         let content: &Content = src;
-        Self(content)
+        Self::from(content)
     }
 }
 
 impl<'a> Hash for DiffableContent<'a> {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.hash(state);
+        match self {
+            Self::Content(content) => content.hash(state),
+        };
     }
 }
 
@@ -77,7 +45,13 @@ impl<'a> Ord for DiffableContent<'a> {
 
 impl<'a> PartialEq for DiffableContent<'a> {
     fn eq(&self, other: &Self) -> bool {
-        self.dyn_eq(other.0) || other.dyn_eq(self.0)
+        match (self, other) {
+            (Self::Content(content), Self::Content(other)) => {
+                let content = content.plain_text();
+                let other = other.plain_text();
+                content == other
+            }
+        }
     }
 }
 
@@ -86,7 +60,10 @@ impl<'a> Eq for DiffableContent<'a> {}
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use tracing_test::traced_test;
     use typst::foundations::NativeElement;
+    use typst::text::*;
 
     macro_rules! test_eq {
         ( $a:expr, [ $b:expr, $( $c:expr ),+ ] ) => {
@@ -132,6 +109,7 @@ mod tests {
         };
     }
 
+    #[traced_test]
     #[test]
     fn two_empty_contents() {
         let e1: Content = Content::empty();
@@ -139,32 +117,35 @@ mod tests {
         test_eq!(&e1, &e2);
     }
 
+    #[traced_test]
     #[test]
     fn one_empty_content() {
         let e: Content = Content::empty();
-        let a: Content = TextElem::packed("a");
-        let b: Content = TextElem::packed("b");
-        let c: Content = TextElem::packed("c");
+        let a: Content = TextElem::packed("aaa");
+        let b: Content = TextElem::packed("bbb");
+        let c: Content = TextElem::packed("ccc");
         test_ne!(&e, [&a, &b, &c]);
     }
 
+    #[traced_test]
     #[test]
     fn two_texts() {
-        let a1: Content = Content::new(TextElem::new("a".into()));
-        let a2: Content = TextElem::new("a".into()).pack();
-        let a3: Content = TextElem::packed("a");
-        let b1: Content = Content::new(TextElem::new("b".into()));
-        let b2: Content = TextElem::new("b".into()).pack();
-        let b3: Content = TextElem::packed("b");
+        let a1: Content = Content::new(TextElem::new("aaa".into()));
+        let a2: Content = TextElem::new("aaa".into()).pack();
+        let a3: Content = TextElem::packed("aaa");
+        let b1: Content = Content::new(TextElem::new("bbb".into()));
+        let b2: Content = TextElem::new("bbb".into()).pack();
+        let b3: Content = TextElem::packed("bbb");
         test_eq!(&a1, &a2, &a3);
         test_eq!(&b1, &b2, &b3);
         test_ne!(&b1, [&a1, &a2, &a3]);
         test_ne!(&a1, [&b1, &b2, &b3]);
     }
 
+    #[traced_test]
     #[test]
     fn one_text() {
-        let t: Content = TextElem::packed("a");
+        let t: Content = TextElem::packed("aaa");
         let a: Content = UnderlineElem::new(t.clone()).pack();
         let b: Content = HighlightElem::new(t.clone()).pack();
         let c: Content = SuperElem::new(t.clone()).pack();
@@ -174,9 +155,10 @@ mod tests {
         test_eq!(&t, [&a, &b, &c, &d, &e, &f]);
     }
 
+    #[traced_test]
     #[test]
     fn cascading_texts() {
-        let t: Content = TextElem::packed("a");
+        let t: Content = TextElem::packed("aaa");
         let a: Content = UnderlineElem::new(t.clone()).pack();
         let b: Content = HighlightElem::new(a.clone()).pack();
         let c: Content = SuperElem::new(b.clone()).pack();
