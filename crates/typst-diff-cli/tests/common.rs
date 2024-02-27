@@ -32,7 +32,7 @@ pub(crate) mod intern {
             .into_persistent_if(env::var_os(ENV_PERSIST_FILES).is_some());
 
         let basename = function_name.replace("::", "-");
-        let file_diff = format!("{basename}-dff.pdf");
+        let file_diff = format!("{basename}-diff.pdf");
         let file_a = format!("{basename}-a.typ");
         let file_b = format!("{basename}-b.typ");
 
