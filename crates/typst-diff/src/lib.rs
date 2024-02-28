@@ -2,7 +2,7 @@ mod content;
 
 use std::collections::HashSet;
 
-use comemo::{Track, Tracked, Validate};
+use comemo::{Prehashed, Track, Tracked, Validate};
 use ecow::EcoVec;
 
 use typst::diag::{warning, SourceDiagnostic, SourceResult};
@@ -13,7 +13,7 @@ use typst::introspection::{Introspector, Locator};
 use typst::layout::{Abs, LayoutRoot};
 use typst::model::Document;
 use typst::syntax::Span;
-use typst::text::{HighlightElem, StrikeElem};
+use typst::text::{HighlightElem, SpaceElem, StrikeElem};
 use typst::util;
 use typst::visualize::{Color, Paint, Stroke};
 use typst::World;
@@ -132,12 +132,38 @@ fn deduplicate(mut diags: EcoVec<SourceDiagnostic>) -> EcoVec<SourceDiagnostic> 
 }
 
 fn diff_content(content_one: Content, content_two: Content) -> Content {
+    fn fold_content<'a>(
+        (mut vec, append): (Vec<DiffableContent<'a>>, bool),
+        content: &'a Prehashed<Content>,
+    ) -> (Vec<DiffableContent<'a>>, bool) {
+        if content.to::<SpaceElem>().is_some() {
+            let last = vec.pop().expect("first element is never a SpaceElem");
+            let last = last.append(content);
+            vec.push(last);
+            (vec, true)
+        } else if append {
+            let last = vec.pop().unwrap();
+            let last = last.append(content);
+            vec.push(last);
+            (vec, false)
+        } else {
+            vec.push(content.into());
+            (vec, false)
+        }
+    }
+
     let seq_one: Vec<DiffableContent> = match content_one.to_sequence() {
-        Some(seq) => seq.map(|c| c.into()).collect(),
+        Some(seq) => {
+            seq.fold((Vec::<DiffableContent>::new(), false), fold_content)
+                .0
+        }
         None => vec![DiffableContent::from(&content_one)],
     };
     let seq_two: Vec<DiffableContent> = match content_two.to_sequence() {
-        Some(seq) => seq.map(|c| c.into()).collect(),
+        Some(seq) => {
+            seq.fold((Vec::<DiffableContent>::new(), false), fold_content)
+                .0
+        }
         None => vec![DiffableContent::from(&content_two)],
     };
     tracing::trace!("seq_one:\n{seq_one:#?}");
@@ -159,9 +185,10 @@ fn create_diff_content(
     mut content: Vec<Content>,
     (tag, next): &(ChangeTag, &[DiffableContent]),
 ) -> Vec<Content> {
-    let body: Content = Content::sequence(next.into_iter().map(|x| match x {
-        DiffableContent::Content(x) => (*x).clone(),
-    }));
+    let body: Content = Content::sequence(
+        next.iter()
+            .flat_map(|x| x.as_slice().iter().map(|x| (*x).clone())),
+    );
     match tag {
         ChangeTag::Equal => {
             content.push(body);

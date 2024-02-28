@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
+use std::slice;
 
 use comemo::Prehashed;
 use typst::foundations::Content;
@@ -7,6 +8,29 @@ use typst::foundations::Content;
 #[derive(Clone, Debug)]
 pub(crate) enum DiffableContent<'a> {
     Content(&'a Content),
+    ContentSlice(Vec<&'a Content>),
+}
+
+impl<'a> DiffableContent<'a> {
+    pub fn as_slice(&'a self) -> &'a [&'a Content] {
+        match self {
+            Self::Content(x) => slice::from_ref(x),
+            Self::ContentSlice(vec) => vec,
+        }
+    }
+
+    pub fn append(self, content: &'a Content) -> Self {
+        let x = match self {
+            Self::Content(x) => {
+                vec![x, content]
+            }
+            Self::ContentSlice(mut x) => {
+                x.push(content);
+                x
+            }
+        };
+        Self::ContentSlice(x)
+    }
 }
 
 impl<'a> From<&'a Content> for DiffableContent<'a> {
@@ -22,11 +46,25 @@ impl<'a> From<&'a Prehashed<Content>> for DiffableContent<'a> {
     }
 }
 
+impl<'a> From<&'a [Content]> for DiffableContent<'a> {
+    fn from(content: &'a [Content]) -> Self {
+        let content: Vec<&'a Content> = content.iter().collect();
+        Self::ContentSlice(content)
+    }
+}
+
+impl<'a> From<&'a [&'a Content]> for DiffableContent<'a> {
+    fn from(content: &'a [&'a Content]) -> Self {
+        Self::ContentSlice(content.to_vec())
+    }
+}
+
 impl<'a> Hash for DiffableContent<'a> {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
         match self {
             Self::Content(content) => content.hash(state),
+            Self::ContentSlice(content) => content.iter().for_each(|x| x.hash(state)),
         };
     }
 }
@@ -49,6 +87,25 @@ impl<'a> PartialEq for DiffableContent<'a> {
             (Self::Content(content), Self::Content(other)) => {
                 let content = content.plain_text();
                 let other = other.plain_text();
+                content == other
+            }
+            (Self::Content(content), Self::ContentSlice(other)) => {
+                let content = content.plain_text();
+                let other: Vec<_> = other.iter().map(|x| x.plain_text()).collect();
+                let other = other.concat();
+                content == other
+            }
+            (Self::ContentSlice(content), Self::Content(other)) => {
+                let other = other.plain_text();
+                let content: Vec<_> = content.iter().map(|x| x.plain_text()).collect();
+                let content = content.concat();
+                content == other
+            }
+            (Self::ContentSlice(content), Self::ContentSlice(other)) => {
+                let content: Vec<_> = content.iter().map(|x| x.plain_text()).collect();
+                let content = content.concat();
+                let other: Vec<_> = other.iter().map(|x| x.plain_text()).collect();
+                let other = other.concat();
                 content == other
             }
         }
@@ -164,5 +221,69 @@ mod tests {
         let c: Content = SuperElem::new(b.clone()).pack();
         let d: Content = OverlineElem::new(c.clone()).pack();
         test_eq!(&t, [&a, &b, &c, &d]);
+    }
+
+    #[traced_test]
+    #[test]
+    fn compare_with_content_slices() {
+        let a1: Content = TextElem::packed("aaabbb");
+        let a2: Vec<Content> = vec![TextElem::packed("aaa"), TextElem::packed("bbb")];
+        let a3: Vec<Content> = vec![TextElem::packed("aa"), TextElem::packed("abbb")];
+        let a4: Vec<Content> = vec![
+            TextElem::packed("aa"),
+            TextElem::packed("ab"),
+            TextElem::packed("bb"),
+        ];
+        let a5: Vec<Content> = vec![
+            TextElem::packed("aa"),
+            UnderlineElem::new(TextElem::packed("ab")).pack(),
+            TextElem::packed("bb"),
+        ];
+        let a6: Content = UnderlineElem::new(a1.clone()).pack();
+        test_eq!(
+            &a1,
+            a2.as_slice(),
+            a3.as_slice(),
+            a4.as_slice(),
+            a5.as_slice(),
+            &a6
+        );
+    }
+
+    #[traced_test]
+    #[test]
+    fn space_element() {
+        let a1: Content = TextElem::packed("aaa bbb");
+        let a2: Vec<Content> = vec![
+            TextElem::packed("aaa"),
+            SpaceElem::new().pack(),
+            TextElem::packed("bbb"),
+        ];
+        let a3: Vec<Content> = vec![
+            TextElem::packed("aa"),
+            TextElem::packed("a b"),
+            TextElem::packed("bb"),
+        ];
+        let a4: Vec<Content> = vec![
+            TextElem::packed("aa"),
+            UnderlineElem::new(TextElem::packed("a b")).pack(),
+            TextElem::packed("bb"),
+        ];
+        let a5: Vec<Content> = vec![
+            TextElem::packed("aa"),
+            UnderlineElem::new(TextElem::packed("a")).pack(),
+            SpaceElem::new().pack(),
+            UnderlineElem::new(TextElem::packed("b")).pack(),
+            TextElem::packed("bb"),
+        ];
+        let a6: Content = UnderlineElem::new(a1.clone()).pack();
+        test_eq!(
+            &a1,
+            a2.as_slice(),
+            a3.as_slice(),
+            a4.as_slice(),
+            a5.as_slice(),
+            &a6
+        );
     }
 }
