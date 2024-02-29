@@ -87,26 +87,52 @@ impl<'a> PartialEq for DiffableContent<'a> {
             (Self::Content(content), Self::Content(other)) => {
                 let content = content.plain_text();
                 let other = other.plain_text();
-                content == other
+                if content == other {
+                    tracing::trace!("Content == Content:\ntext: {content}");
+                    true
+                } else {
+                    tracing::trace!("Content != Content:\nleft: {content}\nright: {other}");
+                    false
+                }
             }
             (Self::Content(content), Self::ContentSlice(other)) => {
                 let content = content.plain_text();
                 let other: Vec<_> = other.iter().map(|x| x.plain_text()).collect();
                 let other = other.concat();
-                content == other
+                if content == other {
+                    tracing::trace!("Content == ContentSlice:\ntext: {content}");
+                    true
+                } else {
+                    tracing::trace!("Content != ContentSlice:\nleft: {content}\nright: {other}");
+                    false
+                }
             }
             (Self::ContentSlice(content), Self::Content(other)) => {
                 let other = other.plain_text();
                 let content: Vec<_> = content.iter().map(|x| x.plain_text()).collect();
                 let content = content.concat();
-                content == other
+                if content == other {
+                    tracing::trace!("ContentSlice == Content:\ntext: {content}");
+                    true
+                } else {
+                    tracing::trace!("ContentSlice != Content:\nleft: {content}\nright: {other}");
+                    false
+                }
             }
             (Self::ContentSlice(content), Self::ContentSlice(other)) => {
                 let content: Vec<_> = content.iter().map(|x| x.plain_text()).collect();
                 let content = content.concat();
                 let other: Vec<_> = other.iter().map(|x| x.plain_text()).collect();
                 let other = other.concat();
-                content == other
+                if content == other {
+                    tracing::trace!("ContentSlice == ContentSlice:\ntext: {content}");
+                    true
+                } else {
+                    tracing::trace!(
+                        "ContentSlice != ContentSlice:\nleft: {content}\nright: {other}"
+                    );
+                    false
+                }
             }
         }
     }
