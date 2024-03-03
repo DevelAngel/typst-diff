@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
+use std::ops::Deref;
 use std::slice;
 
 use comemo::Prehashed;
@@ -83,62 +84,48 @@ impl<'a> Ord for DiffableContent<'a> {
 
 impl<'a> PartialEq for DiffableContent<'a> {
     fn eq(&self, other: &Self) -> bool {
+        let plain_text = |c: &Content| c.plain_text();
+        let plain_text_vec = |v: &[&Content]| v.iter().map(|&c| plain_text(c)).collect::<Vec<_>>();
+
         match (self, other) {
             (Self::Content(content), Self::Content(other)) => {
-                let content = content.plain_text();
-                let other = other.plain_text();
-                if content == other {
-                    tracing::trace!("Content == Content:\ntext: {content}");
-                    true
-                } else {
-                    tracing::trace!("Content != Content:\nleft: {content}\nright: {other}");
-                    false
-                }
+                let content = plain_text(content);
+                let other = plain_text(other);
+                content == other
             }
             (Self::Content(content), Self::ContentSlice(other)) => {
-                let content = content.plain_text();
-                let other: Vec<_> = other.iter().map(|x| x.plain_text()).collect();
-                let other = other.concat();
-                if content == other {
-                    tracing::trace!("Content == ContentSlice:\ntext: {content}");
-                    true
-                } else {
-                    tracing::trace!("Content != ContentSlice:\nleft: {content}\nright: {other}");
-                    false
-                }
+                let content = plain_text(content);
+                let other = plain_text_vec(other);
+                cmp_chars(&[content], other.deref())
             }
             (Self::ContentSlice(content), Self::Content(other)) => {
-                let other = other.plain_text();
-                let content: Vec<_> = content.iter().map(|x| x.plain_text()).collect();
-                let content = content.concat();
-                if content == other {
-                    tracing::trace!("ContentSlice == Content:\ntext: {content}");
-                    true
-                } else {
-                    tracing::trace!("ContentSlice != Content:\nleft: {content}\nright: {other}");
-                    false
-                }
+                let other = plain_text(other);
+                let content = plain_text_vec(content);
+                cmp_chars(content.deref(), &[other])
             }
             (Self::ContentSlice(content), Self::ContentSlice(other)) => {
-                let content: Vec<_> = content.iter().map(|x| x.plain_text()).collect();
-                let content = content.concat();
-                let other: Vec<_> = other.iter().map(|x| x.plain_text()).collect();
-                let other = other.concat();
-                if content == other {
-                    tracing::trace!("ContentSlice == ContentSlice:\ntext: {content}");
-                    true
-                } else {
-                    tracing::trace!(
-                        "ContentSlice != ContentSlice:\nleft: {content}\nright: {other}"
-                    );
-                    false
-                }
+                let content = plain_text_vec(content);
+                let other = plain_text_vec(other);
+                cmp_chars(content.deref(), other.deref())
             }
         }
     }
 }
 
 impl<'a> Eq for DiffableContent<'a> {}
+
+fn cmp_chars<T: AsRef<str>, U: AsRef<str>>(a: &[T], b: &[U]) -> bool {
+    let a = a.iter().flat_map(|s| s.as_ref().chars());
+    let b = b.iter().flat_map(|s| s.as_ref().chars());
+    let a_count = a.clone().count();
+    let b_count = b.clone().count();
+    if a_count == b_count {
+        let eq_count = a.zip(b).filter(|&(a, b)| a == b).count();
+        eq_count == a_count
+    } else {
+        false
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -147,6 +134,64 @@ mod tests {
     use tracing_test::traced_test;
     use typst::foundations::NativeElement;
     use typst::text::*;
+
+    #[test]
+    fn cmp_chars_eq() {
+        assert!(cmp_chars(&["a"], &["a"]));
+        assert!(cmp_chars(&["ab"], &["ab"]));
+        assert!(cmp_chars(&["abc"], &["abc"]));
+        assert!(cmp_chars(&["abcd"], &["abcd"]));
+        assert!(cmp_chars(&["abcde"], &["abcde"]));
+
+        assert!(cmp_chars(&["a", "b"], &["ab"]));
+        assert!(cmp_chars(&["a", "b", "c"], &["abc"]));
+        assert!(cmp_chars(&["a", "b", "c", "d"], &["abcd"]));
+        assert!(cmp_chars(&["a", "b", "c", "d", "e"], &["abcde"]));
+    }
+
+    #[test]
+    fn cmp_chars_ne_same_len() {
+        assert!(!cmp_chars(&["a"], &["b"]));
+        assert!(!cmp_chars(&["ab"], &["ba"]));
+        assert!(!cmp_chars(&["abc"], &["cba"]));
+        assert!(!cmp_chars(&["abcd"], &["dcba"]));
+        assert!(!cmp_chars(&["abcde"], &["edcba"]));
+
+        assert!(!cmp_chars(&["a", "b"], &["ba"]));
+        assert!(!cmp_chars(&["a", "b", "c"], &["cba"]));
+        assert!(!cmp_chars(&["a", "b", "c", "d"], &["dcba"]));
+        assert!(!cmp_chars(&["a", "b", "c", "d", "e"], &["edcba"]));
+    }
+
+    #[test]
+    fn cmp_chars_ne_different_len() {
+        assert!(!cmp_chars(&["a"], &["cba"]));
+        assert!(!cmp_chars(&["ab"], &["cb"]));
+        assert!(!cmp_chars(&["abc"], &["c"]));
+
+        assert!(!cmp_chars(&["a"], &["c", "b", "a"]));
+        assert!(!cmp_chars(&["a", "b"], &["c", "b"]));
+        assert!(!cmp_chars(&["a", "b", "c"], &["c"]));
+    }
+
+    #[test]
+    fn cmp_chars_ne_similar() {
+        assert!(!cmp_chars(&["a"], &["abc"]));
+        assert!(!cmp_chars(&["ab"], &["abcd"]));
+        assert!(!cmp_chars(&["abc"], &["abcde"]));
+
+        assert!(!cmp_chars(&["abc"], &["a"]));
+        assert!(!cmp_chars(&["abcd"], &["ab"]));
+        assert!(!cmp_chars(&["abcde"], &["abc"]));
+
+        assert!(!cmp_chars(&["a"], &["a", "b", "c"]));
+        assert!(!cmp_chars(&["ab"], &["ab", "cd"]));
+        assert!(!cmp_chars(&["abc"], &["abc", "de"]));
+
+        assert!(!cmp_chars(&["ab", "c"], &["a"]));
+        assert!(!cmp_chars(&["abc", "d"], &["ab"]));
+        assert!(!cmp_chars(&["abcd", "e"], &["abc"]));
+    }
 
     macro_rules! test_eq {
         ( $a:expr, [ $b:expr, $( $c:expr ),+ ] ) => {
