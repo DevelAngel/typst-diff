@@ -117,14 +117,7 @@ impl<'a> Eq for DiffableContent<'a> {}
 fn cmp_chars<T: AsRef<str>, U: AsRef<str>>(a: &[T], b: &[U]) -> bool {
     let a = a.iter().flat_map(|s| s.as_ref().chars());
     let b = b.iter().flat_map(|s| s.as_ref().chars());
-    let a_count = a.clone().count();
-    let b_count = b.clone().count();
-    if a_count == b_count {
-        let eq_count = a.zip(b).filter(|&(a, b)| a == b).count();
-        eq_count == a_count
-    } else {
-        false
-    }
+    a.cmp(b) == Ordering::Equal
 }
 
 #[cfg(test)]
