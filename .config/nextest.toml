@@ -1,0 +1,13 @@
+[[profile.default.overrides]]
+filter = 'package(typst-diff-cli)'
+failure-output = "final"
+success-output = "final"
+
+[[profile.default.overrides]]
+filter = 'package(typst-diff)'
+failure-output = "immediate-final"
+success-output = "final"
+
+[profile.ci]
+fail-fast = false
+status-level = "all"
