@@ -96,17 +96,17 @@ impl<'a> PartialEq for DiffableContent<'a> {
             (Self::Content(content), Self::ContentSlice(other)) => {
                 let content = plain_text(content);
                 let other = plain_text_vec(other);
-                cmp_chars(&[content], other.deref())
+                cmp_chars(&[content], other.deref()) == Ordering::Equal
             }
             (Self::ContentSlice(content), Self::Content(other)) => {
                 let other = plain_text(other);
                 let content = plain_text_vec(content);
-                cmp_chars(content.deref(), &[other])
+                cmp_chars(content.deref(), &[other]) == Ordering::Equal
             }
             (Self::ContentSlice(content), Self::ContentSlice(other)) => {
                 let content = plain_text_vec(content);
                 let other = plain_text_vec(other);
-                cmp_chars(content.deref(), other.deref())
+                cmp_chars(content.deref(), other.deref()) == Ordering::Equal
             }
         }
     }
@@ -114,10 +114,10 @@ impl<'a> PartialEq for DiffableContent<'a> {
 
 impl<'a> Eq for DiffableContent<'a> {}
 
-fn cmp_chars<T: AsRef<str>, U: AsRef<str>>(a: &[T], b: &[U]) -> bool {
+fn cmp_chars<T: AsRef<str>, U: AsRef<str>>(a: &[T], b: &[U]) -> Ordering {
     let a = a.iter().flat_map(|s| s.as_ref().chars());
     let b = b.iter().flat_map(|s| s.as_ref().chars());
-    a.cmp(b) == Ordering::Equal
+    a.cmp(b)
 }
 
 #[cfg(test)]
@@ -130,60 +130,66 @@ mod tests {
 
     #[test]
     fn cmp_chars_eq() {
-        assert!(cmp_chars(&["a"], &["a"]));
-        assert!(cmp_chars(&["ab"], &["ab"]));
-        assert!(cmp_chars(&["abc"], &["abc"]));
-        assert!(cmp_chars(&["abcd"], &["abcd"]));
-        assert!(cmp_chars(&["abcde"], &["abcde"]));
+        assert_eq!(cmp_chars(&["a"], &["a"]), Ordering::Equal);
+        assert_eq!(cmp_chars(&["ab"], &["ab"]), Ordering::Equal);
+        assert_eq!(cmp_chars(&["abc"], &["abc"]), Ordering::Equal);
+        assert_eq!(cmp_chars(&["abcd"], &["abcd"]), Ordering::Equal);
+        assert_eq!(cmp_chars(&["abcde"], &["abcde"]), Ordering::Equal);
 
-        assert!(cmp_chars(&["a", "b"], &["ab"]));
-        assert!(cmp_chars(&["a", "b", "c"], &["abc"]));
-        assert!(cmp_chars(&["a", "b", "c", "d"], &["abcd"]));
-        assert!(cmp_chars(&["a", "b", "c", "d", "e"], &["abcde"]));
+        assert_eq!(cmp_chars(&["a", "b"], &["ab"]), Ordering::Equal);
+        assert_eq!(cmp_chars(&["a", "b", "c"], &["abc"]), Ordering::Equal);
+        assert_eq!(cmp_chars(&["a", "b", "c", "d"], &["abcd"]), Ordering::Equal);
+        assert_eq!(
+            cmp_chars(&["a", "b", "c", "d", "e"], &["abcde"]),
+            Ordering::Equal
+        );
     }
 
     #[test]
     fn cmp_chars_ne_same_len() {
-        assert!(!cmp_chars(&["a"], &["b"]));
-        assert!(!cmp_chars(&["ab"], &["ba"]));
-        assert!(!cmp_chars(&["abc"], &["cba"]));
-        assert!(!cmp_chars(&["abcd"], &["dcba"]));
-        assert!(!cmp_chars(&["abcde"], &["edcba"]));
+        assert_ne!(cmp_chars(&["a"], &["b"]), Ordering::Equal);
+        assert_ne!(cmp_chars(&["ab"], &["ba"]), Ordering::Equal);
+        assert_ne!(cmp_chars(&["abc"], &["cba"]), Ordering::Equal);
+        assert_ne!(cmp_chars(&["abcd"], &["dcba"]), Ordering::Equal);
+        assert_ne!(cmp_chars(&["abcde"], &["edcba"]), Ordering::Equal);
 
-        assert!(!cmp_chars(&["a", "b"], &["ba"]));
-        assert!(!cmp_chars(&["a", "b", "c"], &["cba"]));
-        assert!(!cmp_chars(&["a", "b", "c", "d"], &["dcba"]));
-        assert!(!cmp_chars(&["a", "b", "c", "d", "e"], &["edcba"]));
+        assert_ne!(cmp_chars(&["a", "b"], &["ba"]), Ordering::Equal);
+        assert_ne!(cmp_chars(&["a", "b", "c"], &["cba"]), Ordering::Equal);
+        assert_ne!(cmp_chars(&["a", "b", "c", "d"], &["dcba"]), Ordering::Equal);
+        assert_ne!(
+            cmp_chars(&["a", "b", "c", "d", "e"], &["edcba"]),
+            Ordering::Equal
+        );
     }
 
     #[test]
     fn cmp_chars_ne_different_len() {
-        assert!(!cmp_chars(&["a"], &["cba"]));
-        assert!(!cmp_chars(&["ab"], &["cb"]));
-        assert!(!cmp_chars(&["abc"], &["c"]));
+        assert_ne!(cmp_chars(&["a"], &["cba"]), Ordering::Equal);
+        assert_ne!(cmp_chars(&["ab"], &["cb"]), Ordering::Equal);
+        assert_ne!(cmp_chars(&["abc"], &["c"]), Ordering::Equal);
 
-        assert!(!cmp_chars(&["a"], &["c", "b", "a"]));
-        assert!(!cmp_chars(&["a", "b"], &["c", "b"]));
-        assert!(!cmp_chars(&["a", "b", "c"], &["c"]));
+        assert_ne!(cmp_chars(&["a"], &["c", "b", "a"]), Ordering::Equal);
+        assert_ne!(cmp_chars(&["a", "b"], &["c", "b"]), Ordering::Equal);
+        assert_ne!(cmp_chars(&["a", "b", "c"], &["c"]), Ordering::Equal);
     }
 
     #[test]
     fn cmp_chars_ne_similar() {
-        assert!(!cmp_chars(&["a"], &["abc"]));
-        assert!(!cmp_chars(&["ab"], &["abcd"]));
-        assert!(!cmp_chars(&["abc"], &["abcde"]));
+        assert_ne!(cmp_chars(&["a"], &["abc"]), Ordering::Equal);
+        assert_ne!(cmp_chars(&["ab"], &["abcd"]), Ordering::Equal);
+        assert_ne!(cmp_chars(&["abc"], &["abcde"]), Ordering::Equal);
 
-        assert!(!cmp_chars(&["abc"], &["a"]));
-        assert!(!cmp_chars(&["abcd"], &["ab"]));
-        assert!(!cmp_chars(&["abcde"], &["abc"]));
+        assert_ne!(cmp_chars(&["abc"], &["a"]), Ordering::Equal);
+        assert_ne!(cmp_chars(&["abcd"], &["ab"]), Ordering::Equal);
+        assert_ne!(cmp_chars(&["abcde"], &["abc"]), Ordering::Equal);
 
-        assert!(!cmp_chars(&["a"], &["a", "b", "c"]));
-        assert!(!cmp_chars(&["ab"], &["ab", "cd"]));
-        assert!(!cmp_chars(&["abc"], &["abc", "de"]));
+        assert_ne!(cmp_chars(&["a"], &["a", "b", "c"]), Ordering::Equal);
+        assert_ne!(cmp_chars(&["ab"], &["ab", "cd"]), Ordering::Equal);
+        assert_ne!(cmp_chars(&["abc"], &["abc", "de"]), Ordering::Equal);
 
-        assert!(!cmp_chars(&["ab", "c"], &["a"]));
-        assert!(!cmp_chars(&["abc", "d"], &["ab"]));
-        assert!(!cmp_chars(&["abcd", "e"], &["abc"]));
+        assert_ne!(cmp_chars(&["ab", "c"], &["a"]), Ordering::Equal);
+        assert_ne!(cmp_chars(&["abc", "d"], &["ab"]), Ordering::Equal);
+        assert_ne!(cmp_chars(&["abcd", "e"], &["abc"]), Ordering::Equal);
     }
 
     macro_rules! test_eq {
